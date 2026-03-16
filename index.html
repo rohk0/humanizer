@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Text Humanizer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>AI Text Humanizer</h1>
+            <p class="subtitle">Transform AI-generated text into natural, human-sounding content</p>
+        </header>
+
+        <main>
+            <section class="input-section">
+                <label for="ai-text">Paste your AI-generated text below:</label>
+                <textarea id="ai-text" placeholder="Enter your AI-generated text here..."></textarea>
+                <div class="controls">
+                    <div class="char-count"><span id="char-count">0</span> characters</div>
+                    <div class="button-group">
+                        <button id="clear-btn" class="btn btn-secondary">Clear</button>
+                        <button id="humanize-btn" class="btn btn-primary">Humanize</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="result-section" class="result-section hidden">
+                <label>Humanized Output:</label>
+                <div id="result-output" class="result-output"></div>
+                <div class="result-controls">
+                    <button id="copy-btn" class="btn btn-secondary">Copy to Clipboard</button>
+                    <button id="retry-btn" class="btn btn-secondary">Try Again</button>
+                </div>
+            </section>
+
+            <section class="feedback-section">
+                <h2>Feedback & Adjustments</h2>
+                <p class="feedback-note">Want changes to the design or functionality? Describe your adjustments below, and the AI will update accordingly.</p>
+                <textarea id="feedback-text" placeholder="e.g., 'Make the tone more casual' or 'Add a dark mode toggle'..."></textarea>
+                <button id="feedback-btn" class="btn btn-primary">Submit Feedback</button>
+                <div id="feedback-response" class="feedback-response hidden"></div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 AI Text Humanizer. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
