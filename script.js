@@ -14,11 +14,16 @@ const feedbackResponse = document.getElementById('feedback-response');
 const toast = document.getElementById('toast');
 
 // Load saved API key from localStorage
-apiKeyInput.value = localStorage.getItem('gemini_api_key') || '';
+apiKeyInput.value = localStorage.getItem('groq_api_key') || '';
 
 // Save API key when changed
 apiKeyInput.addEventListener('change', () => {
-    localStorage.setItem('gemini_api_key', apiKeyInput.value.trim());
+    localStorage.setItem('groq_api_key', apiKeyInput.value.trim());
+});
+
+// Also save on input so programmatic changes persist
+apiKeyInput.addEventListener('input', () => {
+    localStorage.setItem('groq_api_key', apiKeyInput.value.trim());
 });
 
 // Toggle API key visibility
@@ -54,7 +59,7 @@ async function humanizeText() {
     const apiKey = apiKeyInput.value.trim();
 
     if (!apiKey) {
-        showToast('Please enter your Gemini API key first.');
+        showToast('Please enter your Groq API key first.');
         apiKeyInput.focus();
         return;
     }
@@ -71,7 +76,7 @@ async function humanizeText() {
     humanizeBtn.innerHTML = '<span class="spinner"></span>Humanizing...';
 
     try {
-        const humanized = await callGeminiAPI(apiKey, text);
+        const humanized = await callGroqAPI(apiKey, text);
         resultOutput.textContent = humanized;
         resultSection.classList.remove('hidden');
         resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -86,10 +91,21 @@ async function humanizeText() {
     }
 }
 
-async function callGeminiAPI(apiKey, text) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+async function callGroqAPI(apiKey, text) {
+    const url = 'https://api.groq.com/openai/v1/chat/completions';
 
-    const prompt = `You are a text humanizer. Rewrite the following AI-generated text to sound like it was written by a real person. Follow these rules strictly:
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+                {
+                    role: 'system',
+                    content: `You are a text humanizer. Rewrite the user's AI-generated text to sound like it was written by a real person. Follow these rules strictly:
 
 1. Use natural, conversational language — the way a human would actually write.
 2. Replace formal or robotic phrases with casual equivalents.
@@ -97,36 +113,29 @@ async function callGeminiAPI(apiKey, text) {
 4. Vary sentence length — mix short punchy sentences with longer ones.
 5. Keep the original meaning, facts, and structure intact.
 6. Do NOT add any commentary, explanations, or notes — just return the rewritten text.
-7. Do NOT wrap the output in quotes or add a label like "Here's the rewritten text".
-
-Text to humanize:
-
-${text}`;
-
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-                temperature: 0.9,
-                topP: 0.95,
-                maxOutputTokens: 4096,
-            }
+7. Do NOT wrap the output in quotes or add a label like "Here's the rewritten text".`
+                },
+                {
+                    role: 'user',
+                    content: text
+                }
+            ],
+            temperature: 0.9,
+            max_tokens: 4096
         })
     });
 
     if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        if (response.status === 400) throw new Error('Invalid API key. Please check your Gemini key.');
+        if (response.status === 401) throw new Error('Invalid API key. Please check your Groq key.');
         if (response.status === 429) throw new Error('Rate limit reached. Please wait a moment and try again.');
         throw new Error(err.error?.message || `API error (${response.status})`);
     }
 
     const data = await response.json();
-    const result = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const result = data.choices?.[0]?.message?.content;
 
-    if (!result) throw new Error('No response from Gemini. Please try again.');
+    if (!result) throw new Error('No response from Groq. Please try again.');
 
     return result.trim();
 }
