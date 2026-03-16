@@ -76,7 +76,9 @@ async function humanizeText() {
         resultSection.classList.remove('hidden');
         resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (error) {
-        showToast(error.message || 'Something went wrong. Please try again.');
+        resultOutput.textContent = 'Error: ' + (error.message || 'Something went wrong. Please try again.');
+        resultSection.classList.remove('hidden');
+        resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } finally {
         humanizeBtn.disabled = false;
         retryBtn.disabled = false;
