@@ -1,3 +1,5 @@
+const apiKeyInput = document.getElementById('api-key');
+const toggleKeyBtn = document.getElementById('toggle-key');
 const aiTextarea = document.getElementById('ai-text');
 const charCount = document.getElementById('char-count');
 const humanizeBtn = document.getElementById('humanize-btn');
@@ -10,6 +12,25 @@ const feedbackText = document.getElementById('feedback-text');
 const feedbackBtn = document.getElementById('feedback-btn');
 const feedbackResponse = document.getElementById('feedback-response');
 const toast = document.getElementById('toast');
+
+// Load saved API key from localStorage
+apiKeyInput.value = localStorage.getItem('gemini_api_key') || '';
+
+// Save API key when changed
+apiKeyInput.addEventListener('change', () => {
+    localStorage.setItem('gemini_api_key', apiKeyInput.value.trim());
+});
+
+// Toggle API key visibility
+toggleKeyBtn.addEventListener('click', () => {
+    if (apiKeyInput.type === 'password') {
+        apiKeyInput.type = 'text';
+        toggleKeyBtn.textContent = 'Hide';
+    } else {
+        apiKeyInput.type = 'password';
+        toggleKeyBtn.textContent = 'Show';
+    }
+});
 
 // Character count
 aiTextarea.addEventListener('input', () => {
@@ -28,8 +49,16 @@ clearBtn.addEventListener('click', () => {
 humanizeBtn.addEventListener('click', () => humanizeText());
 retryBtn.addEventListener('click', () => humanizeText());
 
-function humanizeText() {
+async function humanizeText() {
     const text = aiTextarea.value.trim();
+    const apiKey = apiKeyInput.value.trim();
+
+    if (!apiKey) {
+        showToast('Please enter your Gemini API key first.');
+        apiKeyInput.focus();
+        return;
+    }
+
     if (!text) {
         showToast('Please enter some text first.');
         aiTextarea.focus();
@@ -38,157 +67,66 @@ function humanizeText() {
 
     // Show loading state
     humanizeBtn.disabled = true;
+    retryBtn.disabled = true;
     humanizeBtn.innerHTML = '<span class="spinner"></span>Humanizing...';
 
-    // Simulate processing delay
-    setTimeout(() => {
-        const humanized = applyHumanization(text);
+    try {
+        const humanized = await callGeminiAPI(apiKey, text);
         resultOutput.textContent = humanized;
         resultSection.classList.remove('hidden');
         resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-        // Reset button
+    } catch (error) {
+        showToast(error.message || 'Something went wrong. Please try again.');
+    } finally {
         humanizeBtn.disabled = false;
+        retryBtn.disabled = false;
         humanizeBtn.textContent = 'Humanize';
-    }, 1200 + Math.random() * 800);
+    }
 }
 
-// Core humanization logic
-function applyHumanization(text) {
-    let result = text;
+async function callGeminiAPI(apiKey, text) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
-    // Replace common AI phrases with more natural alternatives
-    const replacements = [
-        [/\bIt is important to note that\b/gi, 'Worth noting,'],
-        [/\bIt's important to note that\b/gi, 'Worth noting,'],
-        [/\bIt is worth mentioning that\b/gi, 'Also,'],
-        [/\bIn today's world\b/gi, 'These days'],
-        [/\bIn today's digital age\b/gi, 'Nowadays'],
-        [/\bIn the realm of\b/gi, 'In'],
-        [/\bIn conclusion\b/gi, 'All in all'],
-        [/\bFurthermore\b/gi, 'Plus'],
-        [/\bMoreover\b/gi, 'On top of that'],
-        [/\bAdditionally\b/gi, 'Also'],
-        [/\bConsequently\b/gi, 'So'],
-        [/\bNevertheless\b/gi, 'Still'],
-        [/\bSubsequently\b/gi, 'Then'],
-        [/\bUtilize\b/gi, 'use'],
-        [/\butilize\b/g, 'use'],
-        [/\bUtilization\b/gi, 'use'],
-        [/\bLeverage\b/gi, 'Use'],
-        [/\bleverage\b/g, 'use'],
-        [/\bFacilitate\b/gi, 'Help with'],
-        [/\bfacilitate\b/g, 'help with'],
-        [/\bEnhance\b/gi, 'Improve'],
-        [/\benhance\b/g, 'improve'],
-        [/\bOptimize\b/gi, 'Improve'],
-        [/\boptimize\b/g, 'improve'],
-        [/\bImplement\b/gi, 'Set up'],
-        [/\bimplement\b/g, 'set up'],
-        [/\bDelve into\b/gi, 'Look into'],
-        [/\bdelve into\b/g, 'look into'],
-        [/\bDelve\b/gi, 'Dig'],
-        [/\bdelve\b/g, 'dig'],
-        [/\bPlethora of\b/gi, 'Lots of'],
-        [/\bplethora of\b/g, 'lots of'],
-        [/\bA myriad of\b/gi, 'Many'],
-        [/\ba myriad of\b/g, 'many'],
-        [/\bMyriad\b/gi, 'Many'],
-        [/\bEnsure\b/gi, 'Make sure'],
-        [/\bensure\b/g, 'make sure'],
-        [/\bCommence\b/gi, 'Start'],
-        [/\bcommence\b/g, 'start'],
-        [/\bTerminate\b/gi, 'End'],
-        [/\bterminate\b/g, 'end'],
-        [/\bPrior to\b/gi, 'Before'],
-        [/\bprior to\b/g, 'before'],
-        [/\bSubsequent to\b/gi, 'After'],
-        [/\bIn order to\b/gi, 'To'],
-        [/\bin order to\b/g, 'to'],
-        [/\bDue to the fact that\b/gi, 'Because'],
-        [/\bdue to the fact that\b/g, 'because'],
-        [/\bAt the end of the day\b/gi, 'Ultimately'],
-        [/\bIt goes without saying\b/gi, 'Obviously'],
-        [/\bAs a matter of fact\b/gi, 'In fact'],
-        [/\bFor the purpose of\b/gi, 'For'],
-        [/\bfor the purpose of\b/g, 'for'],
-        [/\bIn the event that\b/gi, 'If'],
-        [/\bin the event that\b/g, 'if'],
-        [/\bWith regard to\b/gi, 'About'],
-        [/\bwith regard to\b/g, 'about'],
-        [/\bWith respect to\b/gi, 'About'],
-        [/\bTake into consideration\b/gi, 'Consider'],
-        [/\bIt is essential to\b/gi, 'You need to'],
-        [/\bIt is crucial to\b/gi, 'You really need to'],
-        [/\bPlays a pivotal role\b/gi, 'matters a lot'],
-        [/\bplays a pivotal role\b/g, 'matters a lot'],
-        [/\bPlays a crucial role\b/gi, 'is really important'],
-        [/\bplays a crucial role\b/g, 'is really important'],
-        [/\bVast array of\b/gi, 'Wide range of'],
-        [/\bvast array of\b/g, 'wide range of'],
-        [/\bSeamlessly\b/gi, 'Smoothly'],
-        [/\bseamlessly\b/g, 'smoothly'],
-        [/\bRobust\b/gi, 'Strong'],
-        [/\brobust\b/g, 'strong'],
-        [/\bCutting-edge\b/gi, 'Latest'],
-        [/\bcutting-edge\b/g, 'latest'],
-        [/\bState-of-the-art\b/gi, 'Modern'],
-        [/\bstate-of-the-art\b/g, 'modern'],
-        [/\bGamechanger\b/gi, 'Big deal'],
-        [/\bGame-changer\b/gi, 'Big deal'],
-        [/\bParadigm shift\b/gi, 'Big change'],
-        [/\bSynergy\b/gi, 'Teamwork'],
-        [/\bsynergy\b/g, 'teamwork'],
-        [/\bHolistic\b/gi, 'Overall'],
-        [/\bholistic\b/g, 'overall'],
-    ];
+    const prompt = `You are a text humanizer. Rewrite the following AI-generated text to sound like it was written by a real person. Follow these rules strictly:
 
-    for (const [pattern, replacement] of replacements) {
-        result = result.replace(pattern, replacement);
+1. Use natural, conversational language — the way a human would actually write.
+2. Replace formal or robotic phrases with casual equivalents.
+3. Use contractions (don't, it's, we're, etc.).
+4. Vary sentence length — mix short punchy sentences with longer ones.
+5. Keep the original meaning, facts, and structure intact.
+6. Do NOT add any commentary, explanations, or notes — just return the rewritten text.
+7. Do NOT wrap the output in quotes or add a label like "Here's the rewritten text".
+
+Text to humanize:
+
+${text}`;
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+                temperature: 0.9,
+                topP: 0.95,
+                maxOutputTokens: 4096,
+            }
+        })
+    });
+
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        if (response.status === 400) throw new Error('Invalid API key. Please check your Gemini key.');
+        if (response.status === 429) throw new Error('Rate limit reached. Please wait a moment and try again.');
+        throw new Error(err.error?.message || `API error (${response.status})`);
     }
 
-    // Break up overly long sentences (split at conjunctions if sentence > 200 chars)
-    result = result.replace(/([^.!?]{200,?})(, (?:and|but|which|where|while) )/g, '$1. ');
+    const data = await response.json();
+    const result = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    // Add slight variation: occasionally shorten "do not" to "don't", etc.
-    const contractions = [
-        [/\bdo not\b/g, "don't"],
-        [/\bDo not\b/g, "Don't"],
-        [/\bcannot\b/g, "can't"],
-        [/\bCannot\b/g, "Can't"],
-        [/\bwill not\b/g, "won't"],
-        [/\bWill not\b/g, "Won't"],
-        [/\bshould not\b/g, "shouldn't"],
-        [/\bShould not\b/g, "Shouldn't"],
-        [/\bwould not\b/g, "wouldn't"],
-        [/\bWould not\b/g, "Wouldn't"],
-        [/\bcould not\b/g, "couldn't"],
-        [/\bCould not\b/g, "Couldn't"],
-        [/\bit is\b/g, "it's"],
-        [/\bIt is\b/g, "It's"],
-        [/\bthat is\b/g, "that's"],
-        [/\bThat is\b/g, "That's"],
-        [/\bthey are\b/g, "they're"],
-        [/\bThey are\b/g, "They're"],
-        [/\bwe are\b/g, "we're"],
-        [/\bWe are\b/g, "We're"],
-        [/\byou are\b/g, "you're"],
-        [/\bYou are\b/g, "You're"],
-        [/\bI am\b/g, "I'm"],
-        [/\bI have\b/g, "I've"],
-    ];
+    if (!result) throw new Error('No response from Gemini. Please try again.');
 
-    for (const [pattern, replacement] of contractions) {
-        result = result.replace(pattern, replacement);
-    }
-
-    // Remove excessive exclamation marks
-    result = result.replace(/!{2,}/g, '!');
-
-    // Trim double spaces
-    result = result.replace(/ {2,}/g, ' ');
-
-    return result;
+    return result.trim();
 }
 
 // Copy to clipboard
@@ -197,7 +135,6 @@ copyBtn.addEventListener('click', () => {
     navigator.clipboard.writeText(text).then(() => {
         showToast('Copied to clipboard!');
     }).catch(() => {
-        // Fallback
         const textarea = document.createElement('textarea');
         textarea.value = text;
         document.body.appendChild(textarea);
